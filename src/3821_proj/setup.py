@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts':
         [
-            '3821_run = 3821_proj.test:main'
+            '3821_run = 3821_proj.main:main'
         ],
     },
 )
