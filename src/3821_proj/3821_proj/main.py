@@ -2,6 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.duration import Duration
 
 from std_msgs.msg import Header
 
@@ -10,6 +11,10 @@ from nav_msgs.msg import OccupancyGrid              # Required by /map
 from geometry_msgs.msg import PointStamped          # Required by /clicked_point
 from geometry_msgs.msg import PoseWithCovarianceStamped # Required by /initialpose
 
+from geometry_msgs.msg import PoseArray             # Publish a set of points
+from geometry_msgs.msg import Pose
+
+from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray      # Message to publish debugging message
 from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA
@@ -21,10 +26,10 @@ import copy                                         # Deep copy
 import math
 import heapq                                        # Priority Queue
 
-# from tf2_ros.transform_listener import TransformListener
-# from tf2_ros.buffer import Buffer
-# from tf2_ros import LookupTransform
-# from geometry_msgs.msg import TransformStamped
+from tf2_ros.transform_listener import TransformListener
+from tf2_ros.buffer import Buffer
+from tf2_ros import LookupTransform
+from geometry_msgs.msg import TransformStamped      # Result of lookup transform
 
 class PointI:
     """
@@ -204,10 +209,21 @@ class RosNode(Node):
         # We will use this instead when deploying to a physical robot
         self.initPosSub = self.create_subscription(PoseWithCovarianceStamped, '/initialpose', self.OnInitPosePub, 10)
 
+        self.pathPub = self.create_publisher(PoseArray, '/path_points', 10)
+
         self.lineDrawer = LineDrawer()
 
         self.robotPosition = Point()
+
         self.receiveData = True
+
+
+        # TF
+        self.tfBuffer = Buffer()
+        self.tfListener = TransformListener(self.tfBuffer, self)
+
+
+
 
     def OnInitPosePub(self, data:PoseWithCovarianceStamped):
         
@@ -255,7 +271,16 @@ class RosNode(Node):
         print(f'Converted: {grid}')
         print(f'Cost: {self.map.Cost_f(position[0], position[1])}')
 
-        self.MakePath(self.robotPosition, data.point)
+
+        tf:TransformStamped
+        tf = self.tfBuffer.lookup_transform('map', 'odom', data.header.stamp, Duration(seconds=1))
+
+        robot_P = Point()
+        robot_P.x = self.robotPosition.x + tf.transform.translation.x
+        robot_P.y = self.robotPosition.y + tf.transform.translation.y
+        robot_P.z = self.robotPosition.z + tf.transform.translation.z
+
+        self.MakePath(robot_P, data.point)
 
 
     def MakePath(self, s:Point, e:Point):
@@ -274,19 +299,32 @@ class RosNode(Node):
 
         print(f'Size of the path: {len(path)}')
 
+        msg = PoseArray()
+        msg.header.frame_id = 'map'
+        msg.header.stamp = self.get_clock().now().to_msg()
+
         for i in range(len(path)):
             # Convert from index coordinate to world coordinate
             coords = self.map.ToCoordinates(path[i].x, path[i].y)
             self.lineDrawer.Append(coords.x, coords.y)
-    
 
-        #self.lineDrawer.Append(s.x, s.y)
-        #self.lineDrawer.Append(e.x, e.y)
+            p = Pose()
+            p.position.x = coords.x
+            p.position.y = coords.y
+            msg.poses.append(p)
+
+        self.pathPub.publish(msg)
+
+        # self.lineDrawer.Append(s.x, s.y)
+        # self.lineDrawer.Append(e.x, e.y)
 
         ############################################
 
         self.lineDrawer.End()
         receiveData = True
+
+
+    
 
 
 class A_star:
