@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts':
         [
-            '3821_run = 3821_proj.main:main'
+            '3821_planner = 3821_proj.path_planner:main',
+            '3821_follower = 3821_proj.path_follower:main',
         ],
     },
 )
