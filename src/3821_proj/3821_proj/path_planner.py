@@ -338,10 +338,9 @@ class A_star:
 
     def Heuristic(self, point:PointI):
         """
-        Euclidean distance from given point to the destination.
-        Could change to Manhattan distance instead later for experiement.
+        Manhattan distance, sum of absolute value difference in each coordinate.
         """
-        return math.dist((point.x, point.y), (self.end.x, self.end.y))
+        return abs(point.x - self.end.x) + abs(point.y - self.end.y)
 
     def Run(self):
         costMap = self.map.CopySet(float('inf'))    # cost map of the same size 
