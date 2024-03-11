@@ -315,11 +315,16 @@ class RosNode(Node):
 
         ############################################
         # Implement a path planning algorithm here #
+        #  Algorithm must return a list of PointI  #
+        #        and It should be named path       #
+        ############################################
 
         a_star = A_star(start, end, self.map)
 
         path:list[PointI]
         path = a_star.Run()
+
+        ############################################
 
         print(f'Size of the path: {len(path)}')
 
@@ -342,7 +347,6 @@ class RosNode(Node):
         # self.lineDrawer.Append(s.x, s.y)
         # self.lineDrawer.Append(e.x, e.y)
 
-        ############################################
 
         self.lineDrawer.End()
         receiveData = True
@@ -358,9 +362,10 @@ class A_star:
         self.map = map
 
         # Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
-        self.ROBOT_SIZE = 0.3
-        converted = self.map.ToIndices(x=self.ROBOT_SIZE, y=0.0)
-        print(f'Number of cells occupied for {self.ROBOT_SIZE} metres: {converted.x}')
+        self.ROBOT_RADIUS = 0.3
+        # Equivalent radius expressed in terms of number of cells in occupancy grid
+        self.ROBOT_CELL_RADIUS = self.map.ToIndices(x= self.ROBOT_RADIUS, y= 0.0).x
+        print(f'Number of cells occupied for {self.ROBOT_RADIUS} metres: {self.ROBOT_CELL_RADIUS}')
 
 
 
@@ -370,6 +375,7 @@ class A_star:
         Manhattan distance, sum of absolute value difference in each coordinate.
         """
         return abs(point.x - self.end.x) + abs(point.y - self.end.y)
+
 
     def Run(self):
         costMap = self.map.CopySet(float('inf'))    # cost map of the same size 
@@ -394,6 +400,7 @@ class A_star:
             if c_Vertex == self.end:
                 break
 
+            # neighbours in 4 directions: up, down, left, right.
             neighbours = [PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1)]
 
             for i in range(len(neighbours)):
