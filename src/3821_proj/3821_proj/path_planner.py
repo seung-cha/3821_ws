@@ -32,6 +32,9 @@ from tf2_ros import LookupTransform
 from geometry_msgs.msg import TransformStamped      # Result of lookup transform
 
 
+import numpy as np  # Array reshaping
+from .Helper import Plotter
+
 
 class PointI:
     """
@@ -159,6 +162,23 @@ class Map:
         a.y = y * self.resolution + self.origin[1]
         return a
     
+    
+    def PlotMap(self):
+        """
+        Use this with Plotter.ShowMap to visualiser the occupancy grid.
+        """
+
+        # For some reason directly converting into 2D array using np doesn't work.
+        # I need to rotate and then flip it.
+        l = np.array(self.map).reshape(self.height, -1)
+        l = np.rot90(l)
+        l = np.fliplr(l)
+
+        return l.tolist()
+
+
+
+    
     def CopyBlank(self):
         """
         Create a deep copy of this object. Each cell of the grid = 0.
@@ -250,6 +270,8 @@ class RosNode(Node):
         self.map = Map(data)
         print(f'Width: {self.map.width}, Height: {self.map.height}, Resolution: {self.map.resolution}')
         print(f'Origin: {o}')
+        Plotter.ShowMap(self.map.PlotMap(), 'Map')
+
 
     def OnOdomPub(self, data:Odometry):
         if not self.receiveData:
@@ -325,7 +347,6 @@ class RosNode(Node):
         self.lineDrawer.End()
         receiveData = True
 
-
     
 
 
@@ -335,6 +356,14 @@ class A_star:
         self.start = start
         self.end = end
         self.map = map
+
+        # Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
+        self.ROBOT_SIZE = 0.3
+        converted = self.map.ToIndices(x=self.ROBOT_SIZE, y=0.0)
+        print(f'Number of cells occupied for {self.ROBOT_SIZE} metres: {converted.x}')
+
+
+
 
     def Heuristic(self, point:PointI):
         """
@@ -393,6 +422,8 @@ class A_star:
         # lastly, append the starting vertex and reverse.
         path.append(self.start)
         path.reverse()
+
+        Plotter.ShowMap(costMap.PlotMap(), 'Cost')
 
         return path
 
