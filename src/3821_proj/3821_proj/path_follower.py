@@ -29,8 +29,8 @@ import math
 
 VELOCITY = 0.3
 ROTATION_VELOCITY = 0.3
-ROTATION_TOLERANCE = 0.1
-GOAL_TOLERANCE = 0.15 
+ROTATION_TOLERANCE = 0.1    # Robot is considered facing at the point if the angular difference is less than this.
+GOAL_TOLERANCE = 0.15       # Robot is considered at the goal if the distance is less than this.
 
 
 class PointPublisher(Node):
@@ -118,7 +118,11 @@ class RosNode(Node):
         self.rotation = y
 
 
+        # Problem: When rotating clickwise, the value changes from +0 to -0.
+        # When rotating anti-clockwise, the value changes from -2pi to 2pi.
         self.rotation = 2 * math.atan2(data.pose.pose.orientation.z, data.pose.pose.orientation.w)
+
+        #print(f'Rotation: {self.rotation}')
 
 
     def OnPathPub(self, data:PoseArray):
