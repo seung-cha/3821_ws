@@ -36,7 +36,7 @@ from .Helper.Heap import MinHeap
 
 
 # Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
-ROBOT_RADIUS = 0.3
+ROBOT_RADIUS = 0.15
 
 
 
@@ -216,56 +216,25 @@ class Map:
 
 
 
-def _Expand(map:Map, x, y, radius):
-    for x1 in range(x - radius, x + radius):
-        for y1 in range(y - radius, y + radius):
-            p = PointI(x= x1, y= y1)
-            if(map.Valid(p)):
-                map.SetCost(p.x, p.y, 1)
-
-
-def ExpandMap(map:Map):
-    # Equivalent radius expressed in terms of number of cells in occupancy grid
-    cellRadius = map.ToIndices(x= ROBOT_RADIUS + map.origin[0], y= map.origin[1]).x
-    print(f'Number of cells occupied for {ROBOT_RADIUS} metres: {cellRadius}')
-
-    expandedMap = map.Copy()
-
-    for x in range(map.width):
-        for y in range(map.height):
-            if map.Cost_i(x,y) >= 1:
-                _Expand(expandedMap, x, y, cellRadius)
-
-    return expandedMap
-
-
-
-
-
-
-
-
 class RosNode(Node):
     """
-    Do not modify anything other than MakePath
+    You probably do not need to modify anything other than MakePath.
     """
 
     def __init__(self):
         super().__init__('node_3821')
 
+        # Two variables that might be useful.
+        self.robotPosition = Point()    # Current coordinates of the robot
+        self.Robot_Cell_Radius = 0      # Robot radius expressed in terms of cells (will update once map is acquired)
+
         self.mapSub = self.create_subscription(OccupancyGrid, '/map', self.OnMapPub, 10)
         self.odomSub = self.create_subscription(Odometry, '/odom', self.OnOdomPub, 10)
         self.pointSub = self.create_subscription(PointStamped, '/clicked_point', self.OnPointPub, 10)
-
-        # We will use this instead when deploying to a physical robot
         self.initPosSub = self.create_subscription(PoseWithCovarianceStamped, '/initialpose', self.OnInitPosePub, 10)
-
         self.pathPub = self.create_publisher(PoseArray, '/path_points', 10)
 
         self.lineDrawer = LineDrawer()
-
-        self.robotPosition = Point()
-
         self.receiveData = True
 
 
@@ -277,16 +246,10 @@ class RosNode(Node):
 
 
     def OnInitPosePub(self, data:PoseWithCovarianceStamped):
-        
-        #To do: Use this pose instead when we are implementing for the physical robot
         print('Pose obtained.')
 
         o = [data.pose.pose.position.x, data.pose.pose.position.y, data.pose.pose.position.z]
         r = [data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w]
-
-        # self.robotPosition.x = data.pose.pose.position.x
-        # self.robotPosition.y = data.pose.pose.position.y
-        # self.robotPosition.z = data.pose.pose.position.z
 
         print('Initial Pose published: ')
         print(f'Position: {o}')
@@ -295,15 +258,15 @@ class RosNode(Node):
     def OnMapPub(self, data:OccupancyGrid):
         print('Map Obtained.')
 
-        o = [data.info.origin.position.x, data.info.origin.position.y, data.info.origin.position.z]
         self.map = Map(data)
+        self.Robot_Cell_Radius = self.map.ToIndices(x= ROBOT_RADIUS + self.map.origin[0], y= self.map.origin[1]).x
+
+        Plotter.ShowMap(self.map.PlotMap(), 'Map')  # Show the map in pyplot
+
+        o = [data.info.origin.position.x, data.info.origin.position.y, data.info.origin.position.z]
         print(f'Width: {self.map.width}, Height: {self.map.height}, Resolution: {self.map.resolution}')
         print(f'Origin: {o}')
 
-        self.expandedMap = ExpandMap(self.map)
-
-        Plotter.ShowMap(self.map.PlotMap(), 'Map')
-        Plotter.ShowMap(self.expandedMap.PlotMap(), 'Expanded Map')
 
 
     def OnOdomPub(self, data:Odometry):
@@ -318,6 +281,7 @@ class RosNode(Node):
 
         if not self.receiveData:
             return    
+        
         receiveData = False
 
         position = [data.point.x, data.point.y, data.point.z]
@@ -352,9 +316,7 @@ class RosNode(Node):
         #        and It should be named path       #
         ############################################
 
-        #a_star = A_star(start, end, self.map)
-        a_star = A_star(start, end, self.expandedMap)
-
+        a_star = A_star(start, end, self.map)
 
         path:list[PointI]
         path = a_star.Run()
@@ -389,69 +351,76 @@ class RosNode(Node):
     
 
 
+
 class A_star:
+    """
+    Implementation of A* algorithm.
+    """
     
     def __init__(self, start:PointI, end:PointI, map:Map):
         self.start = start
         self.end = end
         self.map = map
 
-
-
-
     def Heuristic(self, point:PointI):
         """
-        Manhattan distance, sum of absolute value difference in each coordinate.
+        Manhattan distance, sum of absolute value difference in each axis.
         """
         return abs(point.x - self.end.x) + abs(point.y - self.end.y)
 
-        #return 0 # Dijkstra's algorithm
 
 
     def Run(self):
-        costMap = self.map.CopySet(float('inf'))    # cost map of the same size 
-        print(f'size of costmap: {len(costMap.map)}')
+        # create a map to store the cost to visit each cell.
+        costMap = self.map.CopySet(float('inf'))            # cost map of the same size
+        costMap.SetCost(self.start.x, self.start.y, 0.0)    # Starting cell is reachable without cost.
 
-        costMap.SetCost(self.start.x, self.start.y, 0.0)
+        # create a map to store the predecessor of each cell.
+        # Each cell will take store PointI that represents the cell coordinates of the predecessor.
+        predMap = self.map.CopySet(None)
 
-        predMap = self.map.CopySet(None)            # predecessor map of the same size
-
-
-        frontier = MinHeap()        # Min heap frontier
+        # Store the explored cells, ordered by increasing cost.
+        frontier = MinHeap()                                # Min heap frontier
         frontier.Push(0.0, self.start.x, self.start.y)
  
 
         while len(frontier) > 0:
+            # Get the cost and coordinates of the root in the min heap
             (c_Cost, c_Vertex) = frontier.Pop()
             
-            # Store c_Vertex in PointI to make it easier to work with
+            # convert tuple into PointI to make it easier to work with
             c_Vertex = PointI(c_Vertex[0], c_Vertex[1])
 
             if c_Vertex == self.end:
                 break
 
-            # neighbours in 4 directions: up, down, left, right.
-            # Diagonals as well (second line)
-            neighbours = [PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
-                         # PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
+            # First line is the 4 vertical and horizontal neighbours.
+            # Second line is the 4 diagonal neighbours.
+            neighbours =[
+                PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
+                PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
                          ]
 
-            for i in range(len(neighbours)):
-                # Don't do anything if the coordinates are invalid.
-                # Unexplored cells have value of -1. Skip cells with value < 0.
-                if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) >= 1.0 or self.map.Cost_i(neighbours[i].x, neighbours[i].y) < 0:
-                    continue
 
+            for i in range(len(neighbours)):
+                # Don't do anything if the coordinates are invalid or if there is an obstacle.
+                if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) == 1:
+                    continue
+                
                 cost = c_Cost + self.Heuristic(neighbours[i])
-                # Only consider if the distance is shorter
+
+                # Update the cell if the distance is shorter than the stored one.
                 if cost < costMap.Cost_i(neighbours[i].x, neighbours[i].y):
-                    costMap.SetCost(neighbours[i].x, neighbours[i].y, cost) # Update the neighbour's cost
+                    costMap.SetCost(neighbours[i].x, neighbours[i].y, cost)
                     frontier.Push(cost, neighbours[i].x, neighbours[i].y)
 
                     #Update the predecessor array
                     predMap.SetCost(neighbours[i].x, neighbours[i].y, c_Vertex)
 
         
+        # Display the cost map in pyplot.
+        Plotter.ShowMap(costMap.PlotMap(), 'Cost')
+
         # Establish a path
         path = []
         backTrack = self.end
@@ -463,8 +432,6 @@ class A_star:
         # lastly, append the starting vertex and reverse.
         path.append(self.start)
         path.reverse()
-
-        Plotter.ShowMap(costMap.PlotMap(), 'Cost')
 
         return path
 
