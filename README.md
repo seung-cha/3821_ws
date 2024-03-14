@@ -62,9 +62,9 @@ It will start the simulation in a GUI application `gazebo`.
 
 In the second terminal, run the following command:
 ```console
-$ ros2 launch 3821_proj 3821_launcher.lunch.py
+$ 3821
 ```
-it will start the code planner and follower.
+it will start the planner and follower.
 
 In the last terminal, run the following command:
 ```console
