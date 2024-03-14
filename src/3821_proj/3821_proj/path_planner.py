@@ -404,7 +404,7 @@ class A_star:
 
             for i in range(len(neighbours)):
                 # Don't do anything if the coordinates are invalid or if there is an obstacle.
-                if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) == 1:
+                if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) >= 1.0:
                     continue
                 
                 cost = c_Cost + self.Heuristic(neighbours[i])

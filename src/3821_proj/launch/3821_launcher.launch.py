@@ -11,6 +11,5 @@ def generate_launch_description():
         Node(
             package='3821_proj',
             executable='3821_follower',
-            output='screen',
         ),
     ])
