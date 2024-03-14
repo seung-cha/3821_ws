@@ -27,9 +27,9 @@ from std_msgs.msg import ColorRGBA
 
 import math
 
-VELOCITY = 0.3
-ROTATION_VELOCITY = 0.3
-ROTATION_TOLERANCE = 0.1    # Robot is considered facing at the point if the angular difference is less than this.
+VELOCITY = 0.6
+ROTATION_VELOCITY = 0.9
+ROTATION_TOLERANCE = 0.15   # Robot is considered facing at the point if the angular difference is less than this.
 GOAL_TOLERANCE = 0.15       # Robot is considered at the goal if the distance is less than this.
 
 
