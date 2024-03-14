@@ -23,8 +23,6 @@ from geometry_msgs.msg import Point                 # Alternative data structure
 
 import copy                                         # Deep copy
 
-import math
-import heapq                                        # Priority Queue
 
 from tf2_ros.transform_listener import TransformListener
 from tf2_ros.buffer import Buffer
@@ -34,6 +32,13 @@ from geometry_msgs.msg import TransformStamped      # Result of lookup transform
 
 import numpy as np  # Array reshaping
 from .Helper import Plotter
+from .Helper.Heap import MinHeap
+
+
+# Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
+ROBOT_RADIUS = 0.3
+
+
 
 
 class PointI:
@@ -48,9 +53,6 @@ class PointI:
 
     def __eq__(self, point):
         return (self.x == point.x) and (self.y == point.y) and (self.z == point.z)
-    
-    def __lt__(self, point):
-        return True
     
 
 
@@ -176,9 +178,6 @@ class Map:
 
         return l.tolist()
 
-
-
-    
     def CopyBlank(self):
         """
         Create a deep copy of this object. Each cell of the grid = 0.
@@ -214,6 +213,36 @@ class Map:
             o.map.append(value)
         
         return o
+
+
+
+def _Expand(map:Map, x, y, radius):
+    for x1 in range(x - radius, x + radius):
+        for y1 in range(y - radius, y + radius):
+            p = PointI(x= x1, y= y1)
+            if(map.Valid(p)):
+                map.SetCost(p.x, p.y, 1)
+
+
+def ExpandMap(map:Map):
+    # Equivalent radius expressed in terms of number of cells in occupancy grid
+    cellRadius = map.ToIndices(x= ROBOT_RADIUS + map.origin[0], y= map.origin[1]).x
+    print(f'Number of cells occupied for {ROBOT_RADIUS} metres: {cellRadius}')
+
+    expandedMap = map.Copy()
+
+    for x in range(map.width):
+        for y in range(map.height):
+            if map.Cost_i(x,y) >= 1:
+                _Expand(expandedMap, x, y, cellRadius)
+
+    return expandedMap
+
+
+
+
+
+
 
 
 class RosNode(Node):
@@ -270,7 +299,11 @@ class RosNode(Node):
         self.map = Map(data)
         print(f'Width: {self.map.width}, Height: {self.map.height}, Resolution: {self.map.resolution}')
         print(f'Origin: {o}')
+
+        self.expandedMap = ExpandMap(self.map)
+
         Plotter.ShowMap(self.map.PlotMap(), 'Map')
+        Plotter.ShowMap(self.expandedMap.PlotMap(), 'Expanded Map')
 
 
     def OnOdomPub(self, data:Odometry):
@@ -319,7 +352,9 @@ class RosNode(Node):
         #        and It should be named path       #
         ############################################
 
-        a_star = A_star(start, end, self.map)
+        #a_star = A_star(start, end, self.map)
+        a_star = A_star(start, end, self.expandedMap)
+
 
         path:list[PointI]
         path = a_star.Run()
@@ -361,12 +396,6 @@ class A_star:
         self.end = end
         self.map = map
 
-        # Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
-        self.ROBOT_RADIUS = 0.3
-        # Equivalent radius expressed in terms of number of cells in occupancy grid
-        self.ROBOT_CELL_RADIUS = self.map.ToIndices(x= self.ROBOT_RADIUS, y= 0.0).x
-        print(f'Number of cells occupied for {self.ROBOT_RADIUS} metres: {self.ROBOT_CELL_RADIUS}')
-
 
 
 
@@ -375,6 +404,8 @@ class A_star:
         Manhattan distance, sum of absolute value difference in each coordinate.
         """
         return abs(point.x - self.end.x) + abs(point.y - self.end.y)
+
+        #return 0 # Dijkstra's algorithm
 
 
     def Run(self):
@@ -385,34 +416,37 @@ class A_star:
 
         predMap = self.map.CopySet(None)            # predecessor map of the same size
 
-        frontier = []                               # Minheap
-        heapq.heappush(frontier, (0.0, self.start)) 
+
+        frontier = MinHeap()        # Min heap frontier
+        frontier.Push(0.0, self.start.x, self.start.y)
+ 
 
         while len(frontier) > 0:
-            current = heapq.heappop(frontier)
-
-            c_Cost:float
-            c_Vertex:PointI
-
-            c_Cost = current[0]
-            c_Vertex = current[1]
+            (c_Cost, c_Vertex) = frontier.Pop()
+            
+            # Store c_Vertex in PointI to make it easier to work with
+            c_Vertex = PointI(c_Vertex[0], c_Vertex[1])
 
             if c_Vertex == self.end:
                 break
 
             # neighbours in 4 directions: up, down, left, right.
-            neighbours = [PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1)]
+            # Diagonals as well (second line)
+            neighbours = [PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
+                         # PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
+                         ]
 
             for i in range(len(neighbours)):
                 # Don't do anything if the coordinates are invalid.
-                if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) >= 1.0:
+                # Unexplored cells have value of -1. Skip cells with value < 0.
+                if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) >= 1.0 or self.map.Cost_i(neighbours[i].x, neighbours[i].y) < 0:
                     continue
 
                 cost = c_Cost + self.Heuristic(neighbours[i])
                 # Only consider if the distance is shorter
                 if cost < costMap.Cost_i(neighbours[i].x, neighbours[i].y):
                     costMap.SetCost(neighbours[i].x, neighbours[i].y, cost) # Update the neighbour's cost
-                    heapq.heappush(frontier, (cost, neighbours[i]))
+                    frontier.Push(cost, neighbours[i].x, neighbours[i].y)
 
                     #Update the predecessor array
                     predMap.SetCost(neighbours[i].x, neighbours[i].y, c_Vertex)
