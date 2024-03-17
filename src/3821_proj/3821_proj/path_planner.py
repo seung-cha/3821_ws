@@ -204,6 +204,14 @@ class Map:
 
 
 
+
+
+
+
+
+
+
+
 class RosNode(Node):
     """
     You probably do not need to modify anything other than MakePath.
@@ -223,8 +231,11 @@ class RosNode(Node):
         self.pathPub = self.create_publisher(PoseArray, '/path_points', 10)
 
         self.lineDrawer = LineDrawer()
+        self.robotPosition = Point()
+
         self.receiveData = True
 
+        self.Robot_Cell_Radius = 0
 
         # TF
         self.tfBuffer = Buffer()
@@ -239,6 +250,7 @@ class RosNode(Node):
         o = [data.pose.pose.position.x, data.pose.pose.position.y, data.pose.pose.position.z]
         r = [data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w]
 
+
         print('Initial Pose published: ')
         print(f'Position: {o}')
         print(f'Orient: {r}')
@@ -250,9 +262,16 @@ class RosNode(Node):
         self.Robot_Cell_Radius = self.map.ToIndices(x= ROBOT_RADIUS + self.map.origin[0], y= self.map.origin[1]).x
 
         o = [data.info.origin.position.x, data.info.origin.position.y, data.info.origin.position.z]
+        
         print(f'Width: {self.map.width}, Height: {self.map.height}, Resolution: {self.map.resolution}')
         print(f'Origin: {o}')
 
+        expander = MapExpander()
+        self.expandedMap = expander.ExpandMap(self.Robot_Cell_Radius, 1.0, self.map)
+
+        # Show the two maps
+        Plotter.ShowMap(self.map.PlotMap(), 'Map')
+        Plotter.ShowMap(self.expandedMap.PlotMap(), 'Expanded Map')
 
 
     def OnOdomPub(self, data:Odometry):
@@ -302,11 +321,12 @@ class RosNode(Node):
         #        and It should be named path       #
         ############################################
 
-        a_star = A_star(start, end, self.map)
+        a_star = A_star(start, end, self.expandedMap)
 
         path:list[PointI]
         path = a_star.Run()
 
+        Plotter.ShowPathMap(self.map.PlotMap(), path)
         ############################################
 
         print(f'Size of the path: {len(path)}')
@@ -316,7 +336,7 @@ class RosNode(Node):
         msg.header.stamp = self.get_clock().now().to_msg()
 
         for i in range(len(path)):
-            # Convert from index coordinate to world coordinate
+            # Convert from cell coordinate to world coordinate
             coords = self.map.ToCoordinates(path[i].x, path[i].y)
             self.lineDrawer.Append(coords.x, coords.y)
 
@@ -334,6 +354,37 @@ class RosNode(Node):
         self.lineDrawer.End()
         receiveData = True
 
+
+
+class MapExpander:
+    """
+    Enlarge obstacles to avoid them
+    """
+
+    def _Expand(self, map:Map, x, y, radius):
+        for x1 in range(x - radius, x + radius):
+            for y1 in range(y - radius, y + radius):
+                p = PointI(x= x1, y= y1)
+                if(map.Valid(p)):
+                    map.SetCost(p.x, p.y, 1)
+
+
+    def ExpandMap(self, robotRadius, factor:float, map:Map):
+        """
+        Enlarge each occupied pixel by ROBOT_RADIUS * factor.
+        """
+        # Equivalent radius expressed in terms of number of cells in occupancy grid
+        rad = (int)(robotRadius * factor)
+        print(f'Number of cells occupied: {rad}.')
+
+        expandedMap = map.Copy()
+
+        for x in range(map.width):
+            for y in range(map.height):
+                if map.Cost_i(x,y) >= 1:
+                    self._Expand(expandedMap, x, y, rad)
+
+        return expandedMap
     
 
 
@@ -380,16 +431,15 @@ class A_star:
             if c_Vertex == self.end:
                 break
 
-            # First line is the 4 vertical and horizontal neighbours.
-            # Second line is the 4 diagonal neighbours.
-            neighbours =[
-                PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
-                PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
+            # neighbours in 4 directions: up, down, left, right.
+            # Diagonals as well (second line)
+            neighbours = [PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
+                          PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
                          ]
 
 
             for i in range(len(neighbours)):
-                # Don't do anything if the coordinates are invalid or if there is an obstacle.
+                # Don't do anything if the coordinates are invalid.
                 if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) >= 1.0:
                     continue
                 
@@ -418,14 +468,8 @@ class A_star:
         path.reverse()
 
 
-        # Show the supplied map
-        Plotter.ShowMap(self.map.PlotMap(), 'Map')
-
         # Display the cost map in pyplot.
         Plotter.ShowCostMap(costMap.PlotMap(), 'Cost')
-
-        # Display the generated path on the world map
-        Plotter.ShowPathMap(self.map.PlotMap(), path)
         
 
         return path
