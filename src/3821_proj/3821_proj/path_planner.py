@@ -41,6 +41,8 @@ import math
 # Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
 ROBOT_RADIUS = 0.15
 
+WEIGHT_RADIUS = 5
+COEFFICIENT = 500
 
 
  
@@ -202,7 +204,7 @@ class Map:
         
         return o
 
-
+min
 
 
 
@@ -266,12 +268,12 @@ class RosNode(Node):
         print(f'Width: {self.map.width}, Height: {self.map.height}, Resolution: {self.map.resolution}')
         print(f'Origin: {o}')
 
-        expander = MapExpander()
-        self.expandedMap = expander.ExpandMap(self.Robot_Cell_Radius, 1.0, self.map)
+        weighter = WeightMap()
+        self.weightMap = weighter.WeightMap(WEIGHT_RADIUS, self.map)
 
         # Show the two maps
         Plotter.ShowMap(self.map.PlotMap(), 'Map')
-        Plotter.ShowMap(self.expandedMap.PlotMap(), 'Expanded Map')
+        Plotter.ShowCostMap(self.weightMap.PlotMap(), 'Weight Map')
 
 
     def OnOdomPub(self, data:Odometry):
@@ -321,7 +323,7 @@ class RosNode(Node):
         #        and It should be named path       #
         ############################################
 
-        a_star = A_star(start, end, self.expandedMap)
+        a_star = A_star(start, end, self.weightMap)
 
         path:list[PointI]
         path = a_star.Run()
@@ -356,37 +358,39 @@ class RosNode(Node):
 
 
 
-class MapExpander:
+class WeightMap:
     """
-    Enlarge obstacles to avoid them
+    Experimental Method of storing 'obstacle weight' in each cell.
     """
 
-    def _Expand(self, map:Map, x, y, radius):
+    def _PutWeight(self, map:Map, x, y, radius):
         for x1 in range(x - radius, x + radius):
+
+
             for y1 in range(y - radius, y + radius):
+                falloff = 1.0 - max(abs(x1 - x)/radius, abs(y1 - y)/radius)
+
                 p = PointI(x= x1, y= y1)
-                if(map.Valid(p)):
-                    map.SetCost(p.x, p.y, 1)
+                if(map.Valid(p) and map.Cost_i(p.x, p.y) < falloff):
+                    map.SetCost(p.x, p.y, falloff)
 
 
-    def ExpandMap(self, robotRadius, factor:float, map:Map):
+    def WeightMap(self, radius, map:Map):
         """
-        Enlarge each occupied pixel by ROBOT_RADIUS * factor.
+        Calculate and store weight in each cell
         """
-        # Equivalent radius expressed in terms of number of cells in occupancy grid
-        rad = (int)(robotRadius * factor)
-        print(f'Number of cells occupied: {rad}.')
 
-        expandedMap = map.Copy()
+        weightMap = map.CopySet(0.0)
 
         for x in range(map.width):
             for y in range(map.height):
                 if map.Cost_i(x,y) >= 1:
-                    self._Expand(expandedMap, x, y, rad)
+                    self._PutWeight(weightMap, x, y, radius)
 
-        return expandedMap
+        return weightMap
+
+
     
-
 
 
 class A_star:
@@ -399,11 +403,13 @@ class A_star:
         self.end = end
         self.map = map
 
+
     def Heuristic(self, point:PointI):
         """
         Manhattan distance, sum of absolute value difference in each axis.
         """
         return abs(point.x - self.end.x) + abs(point.y - self.end.y)
+    
 
 
 
@@ -443,7 +449,8 @@ class A_star:
                 if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) >= 1.0:
                     continue
                 
-                cost = c_Cost + self.Heuristic(neighbours[i])
+                # weighted cost
+                cost = c_Cost + self.Heuristic(neighbours[i]) + COEFFICIENT * self.map.Cost_i(neighbours[i].x, neighbours[i].y)
 
                 # Update the cell if the distance is shorter than the stored one.
                 if cost < costMap.Cost_i(neighbours[i].x, neighbours[i].y):

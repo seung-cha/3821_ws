@@ -1,22 +1,23 @@
 Source Code for COMP3821
 
-# Map Exapnder
+# Weighted Map
 
-```py
-def ExpandMap(self, robotRadius, factor:float, map:Map)
+The heuristic function is modified as follows:
 ```
+C(x) = g(x) + h(x) + c*w(x)
+```
+Where `C(x)` represents the cost of cell `x`, `g(x), h(x)` respectively represents the calculated distance and heuristic (i.e manhattan distance).
 
-Given a map, it will enlarge each occupied cell by the following formula:
+`c` is coefficient and `w(x)` is the weight of cell `x`.
 
-floor(robotRadius * factor).
+Occupied cells and the cells around them are given a weight (0 ~ 1]. Higher values significantly disencourages the robot from taking that cell.
 
-Where:
+The coefficient `c` is to be adjusted. Extremely low value makes the robot ignore the weight (same as vanilla A*) and extremely high value makes the robot not consider the cell at all (same as Expanded Map)
 
-* `robotRadius`: Number of cells to enlarge (radius).
-* `factor`: Factor.
+As opposed to expanded map, robot is not forced to ignore cells adjacent to occupied cells. The robot is instead disencouraged to use them.
 
 
-It basically replaces each occupied cell with a square occupied cell whose sidelength is floor(robotRadius * factor) * 2.
+It may not work; it's just an experimental map inspired by Artificial Potential Field and Guideline Based A*.
 
 
 
