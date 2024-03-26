@@ -361,6 +361,7 @@ class A_star:
         self.start = start
         self.end = end
         self.map = map
+        self.weight = 2
 
     def Heuristic(self, point:PointI):
         """
@@ -407,7 +408,7 @@ class A_star:
                 if not self.map.Valid(neighbours[i]) or self.map.Cost_i(neighbours[i].x, neighbours[i].y) >= 1.0:
                     continue
                 
-                cost = c_Cost + self.Heuristic(neighbours[i])
+                cost = c_Cost + self.Heuristic(neighbours[i]) * self.weight
 
                 # Update the cell if the distance is shorter than the stored one.
                 if cost < costMap.Cost_i(neighbours[i].x, neighbours[i].y):
