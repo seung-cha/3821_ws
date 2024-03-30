@@ -33,6 +33,9 @@ from geometry_msgs.msg import TransformStamped      # Result of lookup transform
 import numpy as np  # Array reshaping
 from .Helper import Plotter
 from .Helper.Heap import MinHeap
+from .Helper.PointI import PointI
+
+import math
 
 
 # Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
@@ -40,22 +43,7 @@ ROBOT_RADIUS = 0.15
 
 
 
-
-class PointI:
-    """
-    Accepts integers
-    """
-
-    def __init__(self, x = 0, y = 0, z = 0):
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def __eq__(self, point):
-        return (self.x == point.x) and (self.y == point.y) and (self.z == point.z)
-    
-
-
+ 
 class LineDrawer(Node):
     """
     Draws debugging line (path) in rviz
@@ -261,8 +249,6 @@ class RosNode(Node):
         self.map = Map(data)
         self.Robot_Cell_Radius = self.map.ToIndices(x= ROBOT_RADIUS + self.map.origin[0], y= self.map.origin[1]).x
 
-        Plotter.ShowMap(self.map.PlotMap(), 'Map')  # Show the map in pyplot
-
         o = [data.info.origin.position.x, data.info.origin.position.y, data.info.origin.position.z]
         print(f'Width: {self.map.width}, Height: {self.map.height}, Resolution: {self.map.resolution}')
         print(f'Origin: {o}')
@@ -399,7 +385,7 @@ class A_star:
             # Second line is the 4 diagonal neighbours.
             neighbours =[
                 PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
-                PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
+                PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x - 1, c_Vertex.y - 1)
                          ]
 
 
@@ -419,8 +405,6 @@ class A_star:
                     predMap.SetCost(neighbours[i].x, neighbours[i].y, c_Vertex)
 
         
-        # Display the cost map in pyplot.
-        Plotter.ShowMap(costMap.PlotMap(), 'Cost')
 
         # Establish a path
         path = []
@@ -433,6 +417,17 @@ class A_star:
         # lastly, append the starting vertex and reverse.
         path.append(self.start)
         path.reverse()
+
+
+        # Show the supplied map
+        Plotter.ShowMap(self.map.PlotMap(), 'Map')
+
+        # Display the cost map in pyplot.
+        Plotter.ShowCostMap(costMap.PlotMap(), 'Search cost')
+
+        # Display the generated path on the world map
+        Plotter.ShowPathMap(self.map.PlotMap(), path, "A* Path, Manhattan Distance")
+        
 
         return path
 
