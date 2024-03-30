@@ -425,7 +425,7 @@ class A_star:
         Plotter.ShowCostMap(costMap.PlotMap(), 'Search cost')
 
         # Display the generated path on the world map
-        Plotter.ShowPathMap(self.map.PlotMap(), path, "A* Path, Manhattan Distance")
+        Plotter.ShowPathMap(self.map.PlotMap(), path, "Dijkstra's")
         
 
         return path
