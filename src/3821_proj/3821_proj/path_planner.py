@@ -269,9 +269,6 @@ class RosNode(Node):
         expander = MapExpander()
         self.expandedMap = expander.ExpandMap(self.Robot_Cell_Radius, 1.0, self.map)
 
-        # Show the two maps
-        Plotter.ShowMap(self.map.PlotMap(), 'Map')
-        Plotter.ShowMap(self.expandedMap.PlotMap(), 'Expanded Map')
 
 
     def OnOdomPub(self, data:Odometry):
@@ -326,7 +323,9 @@ class RosNode(Node):
         path:list[PointI]
         path = a_star.Run()
 
-        Plotter.ShowPathMap(self.map.PlotMap(), path)
+        # Show the two maps
+        Plotter.ShowMap(self.map.PlotMap(), 'Map')
+        Plotter.ShowPathMap(self.map.PlotMap(), path, 'Path Using Expanded Map')
         ############################################
 
         print(f'Size of the path: {len(path)}')
@@ -384,6 +383,8 @@ class MapExpander:
                 if map.Cost_i(x,y) >= 1:
                     self._Expand(expandedMap, x, y, rad)
 
+        Plotter.ShowMap(expandedMap.PlotMap(), f'Expanded Map, No. pixels in one side: {rad * 2}')
+
         return expandedMap
     
 
@@ -431,10 +432,11 @@ class A_star:
             if c_Vertex == self.end:
                 break
 
-            # neighbours in 4 directions: up, down, left, right.
-            # Diagonals as well (second line)
-            neighbours = [PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
-                          PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
+            # First line is the 4 vertical and horizontal neighbours.
+            # Second line is the 4 diagonal neighbours.
+            neighbours =[
+                PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
+                PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x - 1, c_Vertex.y - 1)
                          ]
 
 
@@ -469,7 +471,7 @@ class A_star:
 
 
         # Display the cost map in pyplot.
-        Plotter.ShowCostMap(costMap.PlotMap(), 'Cost')
+        Plotter.ShowCostMap(costMap.PlotMap(), 'A*, Manhattan Distance, Expanded Map')
         
 
         return path
