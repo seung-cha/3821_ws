@@ -273,8 +273,7 @@ class RosNode(Node):
 
         # Show the two maps
         Plotter.ShowMap(self.map.PlotMap(), 'Map')
-        Plotter.ShowCostMap(self.weightMap.PlotMap(), 'Weight Map')
-
+        Plotter.ShowCostMap(self.weightMap.PlotMap(), 'Weight Map, No. Tiles = 5')
 
     def OnOdomPub(self, data:Odometry):
         if not self.receiveData:
@@ -328,7 +327,7 @@ class RosNode(Node):
         path:list[PointI]
         path = a_star.Run()
 
-        Plotter.ShowPathMap(self.map.PlotMap(), path)
+        Plotter.ShowPathMap(self.map.PlotMap(), path, f"A* Path, Manhattan Distance, Weighted Map, , Coefficient = {COEFFICIENT}")
         ############################################
 
         print(f'Size of the path: {len(path)}')
@@ -437,10 +436,11 @@ class A_star:
             if c_Vertex == self.end:
                 break
 
-            # neighbours in 4 directions: up, down, left, right.
-            # Diagonals as well (second line)
-            neighbours = [PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
-                          PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
+            # First line is the 4 vertical and horizontal neighbours.
+            # Second line is the 4 diagonal neighbours.
+            neighbours =[
+                PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
+                PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x - 1, c_Vertex.y - 1)
                          ]
 
 
@@ -476,7 +476,7 @@ class A_star:
 
 
         # Display the cost map in pyplot.
-        Plotter.ShowCostMap(costMap.PlotMap(), 'Cost')
+        Plotter.ShowCostMap(costMap.PlotMap(), f'Search cost, Coefficient = {COEFFICIENT}')
         
 
         return path

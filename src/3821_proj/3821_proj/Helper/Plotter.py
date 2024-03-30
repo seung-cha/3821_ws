@@ -77,3 +77,18 @@ def ShowPathMap(map, path, title='Generated Path'):
     p = Process(target=_ShowPathMap, args=(l,title))
     p.start()
 
+
+
+def _ShowGradientArrow(xMap, yMap, title):
+    plt.title(title)
+    plt.quiver(xMap, yMap)
+    plt.show()
+
+def ShowGradientArrow(xMap, yMap, title='Gradient Map'):
+    """
+    Display the gradient arrow.
+    xMap and yMap must be n dimensional array with equal size
+    """
+
+    p = Process(target=_ShowGradientArrow, args=(xMap, yMap, title))
+    p.start()
