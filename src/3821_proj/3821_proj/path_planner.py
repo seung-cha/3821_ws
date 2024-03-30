@@ -32,25 +32,17 @@ import numpy as np  # Array reshaping
 from .Helper import Plotter
 from .Helper.Heap import MinHeap
 from collections import deque
+from .Helper.PointI import PointI
+
+import math
+
 
 # Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
 ROBOT_RADIUS = 0.15
 
 
-class PointI:
-    """
-    Accepts integers
-    """
 
-    def __init__(self, x=0, y=0, z=0):
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def __eq__(self, point):
-        return (self.x == point.x) and (self.y == point.y) and (self.z == point.z)
-
-
+ 
 class LineDrawer(Node):
     """
     Draws debugging line (path) in rviz
@@ -248,8 +240,6 @@ class RosNode(Node):
         self.map = Map(data)
         self.Robot_Cell_Radius = self.map.ToIndices(x=ROBOT_RADIUS + self.map.origin[0], y=self.map.origin[1]).x
 
-        Plotter.ShowMap(self.map.PlotMap(), 'Map')  # Show the map in pyplot
-
         o = [data.info.origin.position.x, data.info.origin.position.y, data.info.origin.position.z]
         print(f'Width: {self.map.width}, Height: {self.map.height}, Resolution: {self.map.resolution}')
         print(f'Origin: {o}')
@@ -353,8 +343,8 @@ class BFS:
 
     def Run(self):
         # create a map to store the cost to visit each cell.
-        costMap = self.map.CopySet(float('inf'))  # cost map of the same size
-        costMap.SetCost(self.start.x, self.start.y, 0.0)  # Starting cell is reachable without cost.
+        costMap = self.map.CopySet(0)  # cost map of the same size
+        costMap.SetCost(self.start.x, self.start.y, 1)  # Starting cell is already visited
 
         # create a map to store the predecessor of each cell.
         # Each cell will take store PointI that represents the cell coordinates of the predecessor.
@@ -374,9 +364,6 @@ class BFS:
             if c_Vertex == self.end:
                 break
 
-            # First line is the 4 vertical and horizontal neighbours.
-            # Second line is the 4 diagonal neighbours.
-
             for i in range(len(dx)):
                 newX = c_X + dx[i]
                 newY = c_Y + dy[i]
@@ -387,18 +374,14 @@ class BFS:
                     continue
                 # Don't do anything if the coordinates are invalid or if there is an obstacle.
 
-                cost = c_Cost + 1
-
                 # Update the cell if the distance is shorter than the stored one.
-                if cost < costMap.Cost_i(newX, newY):
-                    costMap.SetCost(newX, newY, cost)
-                    queue.append((cost, newX, newY))
+                if  costMap.Cost_i(newX, newY) == 0:
+                    costMap.SetCost(newX, newY, 1)
+                    queue.append((1, newX, newY))
 
                     # Update the predecessor array
                     predMap.SetCost(newX, newY, c_Vertex)
 
-        # Display the cost map in pyplot.
-        Plotter.ShowMap(costMap.PlotMap(), 'Cost')
 
         # Establish a path
         path = []
@@ -411,6 +394,13 @@ class BFS:
         # lastly, append the starting vertex and reverse.
         path.append(self.start)
         path.reverse()
+
+        # Display the cost map in pyplot.
+        Plotter.ShowMap(costMap.PlotMap(), 'Explored Cells')
+
+        # Display the generated path on the world map
+        Plotter.ShowPathMap(self.map.PlotMap(), path, "BFS, 8 connectivity")
+        
 
         return path
 
