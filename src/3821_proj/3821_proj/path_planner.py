@@ -384,7 +384,7 @@ class A_star:
             # Second line is the 4 diagonal neighbours.
             neighbours =[
                 PointI(c_Vertex.x + 1, c_Vertex.y), PointI(c_Vertex.x - 1, c_Vertex.y), PointI(c_Vertex.x, c_Vertex.y + 1), PointI(c_Vertex.x, c_Vertex.y - 1),
-                PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1)
+                PointI(c_Vertex.x + 1, c_Vertex.y + 1), PointI(c_Vertex.x - 1, c_Vertex.y + 1), PointI(c_Vertex.x + 1, c_Vertex.y - 1), PointI(c_Vertex.x - 1, c_Vertex.y - 1)
                          ]
 
 
@@ -422,10 +422,10 @@ class A_star:
         Plotter.ShowMap(self.map.PlotMap(), 'Map')
 
         # Display the cost map in pyplot.
-        Plotter.ShowCostMap(costMap.PlotMap(), 'Cost')
+        Plotter.ShowCostMap(costMap.PlotMap(), 'Search cost')
 
         # Display the generated path on the world map
-        Plotter.ShowPathMap(self.map.PlotMap(), path)
+        Plotter.ShowPathMap(self.map.PlotMap(), path, "A* Path, Manhattan Distance")
         
 
         return path
