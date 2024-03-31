@@ -33,7 +33,7 @@ from geometry_msgs.msg import TransformStamped      # Result of lookup transform
 import numpy as np  # Array reshaping
 from .Helper import Plotter
 from .Helper.Heap import MinHeap
-
+import math
 
 # Radius of an arbitrary cylinder that represents the robot, in metres (as rviz uses metres)
 ROBOT_RADIUS = 0.15
@@ -366,8 +366,14 @@ class A_star:
         """
         Manhattan distance, sum of absolute value difference in each axis.
         """
-        return abs(point.x - self.end.x) + abs(point.y - self.end.y)
 
+        dx = abs(point.x - self.end.x)
+        dy = abs(point.y - self.end.y)
+
+        D = 1
+        D2 = math.sqrt(2)
+
+        return D * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
 
 
     def Run(self):
