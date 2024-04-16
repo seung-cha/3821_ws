@@ -136,12 +136,12 @@ class RosNode(Node):
 
     def Distance(self):
 
-        # Convert from odom to map
+        # Convert from base_link to map
         tf:TransformStamped
-        tf = self.tfBuffer.lookup_transform('map', 'odom', self.header.stamp, Duration(seconds=1))
+        tf = self.tfBuffer.lookup_transform('map', 'base_link', self.header.stamp, Duration(seconds=1))
 
 
-        r = [self.position.x + tf.transform.translation.x, self.position.y + tf.transform.translation.y]
+        r = [tf.transform.translation.x, tf.transform.translation.y]
         r1 = [self.goal.position.x, self.goal.position.y]        
         return math.dist(r, r1)
 
@@ -149,10 +149,10 @@ class RosNode(Node):
     def AngularDifference(self):
         
         tf:TransformStamped
-        tf = self.tfBuffer.lookup_transform('map', 'odom', self.header.stamp, Duration(seconds=1))
+        tf = self.tfBuffer.lookup_transform('map', 'base_link', self.header.stamp, Duration(seconds=1))
 
 
-        r = [self.position.x + tf.transform.translation.x, self.position.y + tf.transform.translation.y]
+        r = [tf.transform.translation.x, tf.transform.translation.y]
         r1 = [self.goal.position.x, self.goal.position.y]   
         return math.atan2(r1[1] - r[1], r1[0] - r[0]) - self.rotation
 
