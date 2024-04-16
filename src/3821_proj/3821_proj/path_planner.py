@@ -189,7 +189,7 @@ class Map:
         """
         Check if argument is within the size of the map
         """
-        return (point.x < self.width) and (point.y < self.height)
+        return (point.x < self.width) and (point.y < self.height) and (point.x >= 0) and (point.y >= 0)
     
 
     def CopySet(self, value):
