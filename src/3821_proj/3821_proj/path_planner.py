@@ -42,7 +42,10 @@ import math
 ROBOT_RADIUS = 0.15
 
 WEIGHT_RADIUS = 5
-COEFFICIENT = 500
+COEFFICIENT = 200
+
+DIST_CONST = 2.0
+DIST_RADIUS = 6.0
 
 
  
@@ -203,9 +206,6 @@ class Map:
             o.map.append(value)
         
         return o
-
-min
-
 
 
 
@@ -410,6 +410,10 @@ class A_star:
         return abs(point.x - self.end.x) + abs(point.y - self.end.y)
     
 
+    def Dist(self, point:PointI):
+        cur = self.map.ToCoordinates(point.x, point.y)
+        goal = self.map.ToCoordinates(self.end.x, self.end.y)
+        return math.dist([cur.x, cur.y], [goal.x, goal.y])
 
 
     def Run(self):
@@ -450,7 +454,9 @@ class A_star:
                     continue
                 
                 # weighted cost
-                cost = c_Cost + self.Heuristic(neighbours[i]) + COEFFICIENT * self.map.Cost_i(neighbours[i].x, neighbours[i].y)
+                cost = c_Cost + self.Heuristic(neighbours[i]) + COEFFICIENT * (self.map.Cost_i(neighbours[i].x, neighbours[i].y) + (self.Dist(c_Vertex) / (DIST_CONST + DIST_RADIUS)))
+                #cost = c_Cost + self.Heuristic(neighbours[i]) + COEFFICIENT * self.map.Cost_i(neighbours[i].x, neighbours[i].y)
+
 
                 # Update the cell if the distance is shorter than the stored one.
                 if cost < costMap.Cost_i(neighbours[i].x, neighbours[i].y):
