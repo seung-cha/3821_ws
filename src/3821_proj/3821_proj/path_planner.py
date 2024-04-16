@@ -283,9 +283,9 @@ class RosNode(Node):
         tf = self.tfBuffer.lookup_transform('map', 'base_link', data.header.stamp, Duration(seconds=1))
 
         robot_P = Point()
-        robot_P.x = self.robotPosition.x + tf.transform.translation.x
-        robot_P.y = self.robotPosition.y + tf.transform.translation.y
-        robot_P.z = self.robotPosition.z + tf.transform.translation.z
+        robot_P.x = tf.transform.translation.x
+        robot_P.y = tf.transform.translation.y
+        robot_P.z = tf.transform.translation.z
 
         self.MakePath(robot_P, data.point)
 
