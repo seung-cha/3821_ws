@@ -3,15 +3,17 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
+from rclpy.time import Time
 
 
+from tf2_geometry_msgs import do_transform_pose
 from geometry_msgs.msg import PoseArray     # Required by /path_points
 from geometry_msgs.msg import Pose
 
 from geometry_msgs.msg import Twist         # Required by /cmd_vel
 from nav_msgs.msg import Odometry
 
-from tf_transformations import euler_from_quaternion
+from tf_transformations import *
 
 
 from std_msgs.msg import Header
@@ -26,11 +28,18 @@ from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA
 
 import math
+import numpy
 
-VELOCITY = 0.6
-ROTATION_VELOCITY = 0.9
+VELOCITY = 0.2
+ROTATION_VELOCITY = 0.2
 ROTATION_TOLERANCE = 0.15   # Robot is considered facing at the point if the angular difference is less than this.
 GOAL_TOLERANCE = 0.15       # Robot is considered at the goal if the distance is less than this.
+
+def cross_prod(a, b):
+    result = [a[1]*b[2] - a[2]*b[1],
+            a[2]*b[0] - a[0]*b[2],
+            a[0]*b[1] - a[1]*b[0]]
+    return result
 
 
 class PointPublisher(Node):
@@ -108,19 +117,20 @@ class RosNode(Node):
 
     
     def OnOdomPub(self, data:Odometry):
+        pass
 
-        self.header = data.header
-        self.position = data.pose.pose.position
+        # self.header = data.header
+        # self.position = data.pose.pose.position
 
-        ori = data.pose.pose.orientation
-        quat = [ori.x, ori.y, ori.z, ori.w]
-        (r,p,y) = euler_from_quaternion(quat)
-        self.rotation = y
+        # ori = data.pose.pose.orientation
+        # quat = [ori.x, ori.y, ori.z, ori.w]
+        # (r,p,y) = euler_from_quaternion(quat)
+        # self.rotation = y
 
 
-        # Problem: When rotating clickwise, the value changes from +0 to -0.
-        # When rotating anti-clockwise, the value changes from -2pi to 2pi.
-        self.rotation = 2 * math.atan2(data.pose.pose.orientation.z, data.pose.pose.orientation.w)
+        #Problem: When rotating clickwise, the value changes from +0 to -0.
+        #When rotating anti-clockwise, the value changes from -2pi to 2pi.
+        #self.rotation = 2 * math.atan2(data.pose.pose.orientation.z, data.pose.pose.orientation.w)
 
         #print(f'Rotation: {self.rotation}')
 
@@ -138,7 +148,9 @@ class RosNode(Node):
 
         # Convert from base_link to map
         tf:TransformStamped
-        tf = self.tfBuffer.lookup_transform('map', 'base_link', self.header.stamp, Duration(seconds=1))
+    
+
+        tf = self.tfBuffer.lookup_transform('map', 'base_link', Time(), Duration(seconds=1))
 
 
         r = [tf.transform.translation.x, tf.transform.translation.y]
@@ -149,12 +161,38 @@ class RosNode(Node):
     def AngularDifference(self):
         
         tf:TransformStamped
-        tf = self.tfBuffer.lookup_transform('map', 'base_link', self.header.stamp, Duration(seconds=1))
+        tf = self.tfBuffer.lookup_transform('base_link', 'map', Time(), Duration(seconds=1))
 
+        
+        transformedPoint = do_transform_pose(self.goal, tf)
 
-        r = [tf.transform.translation.x, tf.transform.translation.y]
-        r1 = [self.goal.position.x, self.goal.position.y]   
-        return math.atan2(r1[1] - r[1], r1[0] - r[0]) - self.rotation
+        #print(f'transformed: {transformedPoint.position}')
+
+        p = [transformedPoint.position.x, transformedPoint.position.y, 0.0]
+        forward = [1.0, 0.0, 0.0]
+
+        cross = numpy.cross(p, forward)
+        l = math.dist(cross, [0.0, 0.0, 0.0])
+        a = math.dist(p, [0.0, 0.0, 0.0])
+
+        # Get the sign
+        s = 1.0 if p[0] >= 0.0 else -1.0
+
+        return s * math.asin(l / a)
+
+        #return math.atan2(p[1] - tf.transform.translation.y, p[0] - tf.transform.translation.x) - self.rotation
+
+    def GetDir(self):
+        """The direction the robot should be rotating to"""
+        tf:TransformStamped
+        tf = self.tfBuffer.lookup_transform('base_link', 'map', Time(), Duration(seconds=1))
+
+        transformedPoint = do_transform_pose(self.goal, tf)
+
+        if transformedPoint.position.y >= 0.0:
+            return 1.0
+        else:
+            return -1.0
 
 
     def MoveRobot(self):
@@ -165,7 +203,6 @@ class RosNode(Node):
             msg.linear.x = 0.0
             msg.angular.z = 0.0
             self.cmdPub.publish(msg)
-
             return
         
         if self.goal is None:
@@ -177,16 +214,21 @@ class RosNode(Node):
         else:
             # Drive the robot
             msg = Twist()
-            if abs(self.AngularDifference()) < ROTATION_TOLERANCE:
+            angDiff = self.AngularDifference()
+            if angDiff < ROTATION_TOLERANCE and angDiff >= 0.0:
                 msg.linear.x = min(VELOCITY, VELOCITY * self.Distance())
             else: 
                 msg.linear.x = 0.0
-                
-            msg.angular.z = min(ROTATION_VELOCITY, ROTATION_VELOCITY * self.AngularDifference())
+                msg.angular.z = self.GetDir() * min(ROTATION_VELOCITY, ROTATION_VELOCITY * abs(angDiff))
+
+            
             self.cmdPub.publish(msg)
 
             print(f'Distance: {self.Distance()}')
             print(f'Difference: {self.AngularDifference()}')
+            #print(f'speed: {msg.linear}')
+            #print(f'angular: {msg.angular}')
+            print('\n')
 
 
         
