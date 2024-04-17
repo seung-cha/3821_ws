@@ -3,6 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
+from rclpy.time import Time
 
 from std_msgs.msg import Header
 
@@ -280,7 +281,7 @@ class RosNode(Node):
 
 
         tf:TransformStamped
-        tf = self.tfBuffer.lookup_transform('map', 'base_link', data.header.stamp, Duration(seconds=1))
+        tf = self.tfBuffer.lookup_transform('map', 'base_link', Time(), Duration(seconds=1))
 
         robot_P = Point()
         robot_P.x = tf.transform.translation.x
