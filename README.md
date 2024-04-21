@@ -18,7 +18,7 @@ Each branch features one implementation of path planning algorithm and experimen
 * `weighted-astar`: Weighted A* 
 * `APF`: Artificial Potential Field
 * `weight_map`: Novel Modified A* and Weight Map
-* `map_expander`: 3.1 Inflated Map, running with A*.
+* `map_expander`: Inflated Map, running with A*.
 
 
 
