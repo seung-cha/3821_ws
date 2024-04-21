@@ -5,7 +5,7 @@ Implementation of various path planning algorithms and experimentation of our no
 
 Collaborators:
 * z5488740 Seung Hwan Cha
-* z5599593 Yimming Zhang
+* z5599593 Kyle Zhang
 * z5480597 Frederick Lu
 * z5580745 Jack Ma
 
