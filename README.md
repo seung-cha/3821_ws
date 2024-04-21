@@ -1,4 +1,25 @@
-Source Code for COMP3821
+# Evaluating and Devising Path Planning Algorithms in Robots
+
+
+Implementation of various path planning algorithms and experimentation of our novel A* algorithm, found in the weight_map branch.
+
+Collaborators:
+* z5488740 Seung Hwan Cha
+* z5599593 Yimming Zhang
+* z5480597 Frederick Lu
+* z5580745 Jack Ma
+
+
+Each branch features one implementation of path planning algorithm and experimentation discussed in Section 2 and 3.
+
+* `main`: 2.1 A*
+* `dijkstra`: 2.2 Dijkstra's
+* `bfs`: 2.3 Breadth First Search
+* `weighted-astar`: 2.4 Weighted A* 
+* `APF`: 2.5 Artificial Potential Field
+* `weight_map`: 2.6 Novel Modified A* (also 3.2 Weighted Map)
+* `map_expander`: 3.1 Inflated Map
+
 
 # Getting Started
 
