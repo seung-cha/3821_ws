@@ -15,7 +15,6 @@ Each branch features one implementation of path planning algorithm and experimen
 * `main`: A*
 * `dijkstra`: Dijkstra's
 * `bfs`: Breadth First Search
-* `weighted-astar`: Weighted A* 
 * `APF`: Artificial Potential Field
 * `weight_map`: Novel Modified A* and Weight Map
 * `map_expander`: Inflated Map, running with A*.
