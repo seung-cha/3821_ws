@@ -21,6 +21,11 @@ Each branch features one implementation of path planning algorithm and experimen
 * `map_expander`: 3.1 Inflated Map
 
 
+
+In addition, you can watch how our A* algorithm behaves:
+* https://youtu.be/IBsjNIw2sfk
+* https://youtu.be/404K9VSpr4s
+
 # Getting Started
 
 ROS2 and turtlebot3 packages must be installed. If you don't have them, follow the official tutorial and install them.
