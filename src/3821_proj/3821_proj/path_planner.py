@@ -355,7 +355,63 @@ class A_star:
         """
         return abs(point.x - self.end.x) + abs(point.y - self.end.y)
 
+    def lineOfSight(self, p1:PointI, p2: PointI):
 
+        x1 = p1.x
+        x2 = p2.x
+
+        y1 = p1.y
+        y2 = p2.y
+
+        dy = p2.y - p1.y
+        dx = p2.x - p1.x
+
+        f = 0
+
+        signY = 1
+        signX = 1
+        offsetX = 0
+        offsetY = 0
+
+        if dy < 0:
+            dy *= -1
+            signY = -1
+            offsetY = -1
+
+        if dx < 0:
+            dx *= -1
+            signX = -1
+            offsetX = -1
+
+        if dx >= dy:
+            while x1 != x2:
+                print(x1)
+                f += dy
+                if f >= dx:
+                    if self.map.Cost_i(x1 + offsetX, y1 + offsetY) >= 1.0:
+                        return False
+                    y1 += signY
+                    f -= dx
+                if f != 0 and self.map.Cost_i(x1 + offsetX, y1 + offsetY) >= 1.0:
+                    return False
+                if dy == 0 and self.map.Cost_i(x1 + offsetX, y1) >= 1.0 and self.map.Cost_i(x1 + offsetX, y1 - 1) >= 1.0:
+                    return False
+                x1 += signX
+        else:
+            while y1 != y2:
+                print(y1)
+                f += dx
+                if f >= dy:
+                    if self.map.Cost_i(x1 + offsetX, y1 + offsetY) >= 1.0:
+                        return False
+                    x1 += signX
+                    f -= dy
+                if f != 0 and self.map.Cost_i(x1 + offsetX, y1 + offsetY) >= 1.0:
+                    return False
+                if dx == 0 and self.map.Cost_i(x1, y1 + offsetY) >= 1.0 and self.map.Cost_i(x1 - 1, y1 + offsetY) >= 1.0:
+                    return False
+                y1 += signY
+        return True
 
     def Run(self):
         # create a map to store the cost to visit each cell.
@@ -418,6 +474,20 @@ class A_star:
         path.append(self.start)
         path.reverse()
 
+
+        newPath = []
+        newPath.append(path[0])
+        k = 0
+
+        for i in range(1, len(path)):
+            if not self.lineOfSight(path[k], path[i]):
+                newPath.append(path[i - 1])
+                k = i - 1
+        newPath.append(path[-1])
+
+        print("asdf")
+        print(newPath)
+        path = newPath
 
         # Show the supplied map
         Plotter.ShowMap(self.map.PlotMap(), 'Map')

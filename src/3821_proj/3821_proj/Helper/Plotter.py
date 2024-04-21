@@ -70,6 +70,7 @@ def ShowPathMap(map, path, title='Generated Path'):
     for point in path:
         l[point.y][point.x] = np.nan
 
+    print("brh")
     # Do the trnasform again
     l = np.rot90(l)
     l = np.fliplr(l)

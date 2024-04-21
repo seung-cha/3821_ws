@@ -10,4 +10,6 @@ class PointI:
 
     def __eq__(self, point):
         return (self.x == point.x) and (self.y == point.y) and (self.z == point.z)
-   
+
+    def __repr__(self):
+        return "(" + str(self.x) + ", " + str(self.y) +")"
