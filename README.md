@@ -12,17 +12,17 @@ Collaborators:
 
 Each branch features one implementation of path planning algorithm and experimentation discussed in Section 2 and 3.
 
-* `main`: 2.1 A*
-* `dijkstra`: 2.2 Dijkstra's
-* `bfs`: 2.3 Breadth First Search
-* `weighted-astar`: 2.4 Weighted A* 
-* `APF`: 2.5 Artificial Potential Field
-* `weight_map`: 2.6 Novel Modified A* (also 3.2 Weighted Map)
-* `map_expander`: 3.1 Inflated Map
+* `main`: A*
+* `dijkstra`: Dijkstra's
+* `bfs`: Breadth First Search
+* `weighted-astar`: Weighted A* 
+* `APF`: Artificial Potential Field
+* `weight_map`: Novel Modified A* and Weight Map
+* `map_expander`: 3.1 Inflated Map, running with A*.
 
 
 
-In addition, you can watch how our A* algorithm behaves:
+In addition, you can watch how our novel A* algorithm behaves:
 * https://youtu.be/IBsjNIw2sfk
 * https://youtu.be/404K9VSpr4s
 
